@@ -1,0 +1,20 @@
+# Web 框架
+streamlit==1.67.0
+
+# 目标检测
+ultralytics==8.4.216
+torch==2.15.0
+torchvision==0.29.2
+
+# 视觉处理与区域分析
+supervision==0.32.0
+opencv-python==5.1.0.95
+numpy==2.5.5
+pillow==13.0.0
+
+# 数据处理与图表
+pandas==3.1.1
+plotly==7.1.0
+
+# 测试
+pytest==9.2.0

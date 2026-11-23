@@ -1,0 +1,69 @@
+NEU-DET-corrected — LICENSE
+===========================
+
+This file covers TWO different things. Please read both parts.
+
+--------------------------------------------------------------------------------
+PART 1 — The modifications made in this release
+--------------------------------------------------------------------------------
+
+The changes made to produce "NEU-DET-corrected" are released under the
+
+    Creative Commons Attribution 4.0 International License (CC BY 4.0)
+
+Full legal text: https://creativecommons.org/licenses/by/4.0/legalcode
+
+These modifications are:
+
+  * removal of 1 duplicate image (patches_105.jpg, pixel-identical to
+    patches_101.jpg),
+  * removal of 3 duplicated bounding boxes (one box listed twice verbatim in
+    each of crazing_120, inclusion_62, patches_198),
+  * addition of a seeded, class-stratified train/val/test split,
+  * conversion of the annotations to YOLO format alongside the original
+    Pascal VOC format,
+  * regeneration of classes.txt, data.yaml, ImageSets/ and this documentation.
+
+You are free to share and adapt these modifications for any purpose, including
+commercially, provided you give appropriate credit.
+
+--------------------------------------------------------------------------------
+PART 2 — The underlying NEU-DET data (IMPORTANT)
+--------------------------------------------------------------------------------
+
+The underlying images and annotations originate from the NEU Surface Defect
+Database (NEU-DET):
+
+    Song, Kechen; Yan, Yunhui.
+    "A noise robust method based on completed local binary patterns for
+    hot-rolled steel strip surface defects."
+    Applied Surface Science 285:858-864, 2013.
+    DOI: 10.1016/j.apsusc.2013.08.123
+
+    He, Yu; Song, Kechen; Meng, Qinggang; Yan, Yunhui.
+    "An End-to-end Steel Surface Defect Detection Approach via Fusing
+    Multiple Hierarchical Features."
+    IEEE Transactions on Instrumentation and Measurement 69(4):1493-1504, 2020.
+    DOI: 10.1109/TIM.2019.2915404
+
+    Official page: https://faculty.neu.edu.cn/songkc/en/zdylm/263265/
+
+THE ORIGINAL AUTHORS HAVE NOT STATED A LICENSE FOR THE DATASET.
+
+  * The dataset is distributed by the authors (Google Drive / Baidu Netdisk)
+    for research use, with a request to cite the papers above.
+  * No LICENSE file, no licence statement, and no terms of use are provided
+    with the download.
+  * The associated papers are published by Elsevier / IEEE; those licences
+    cover the ARTICLES, and do not by themselves license the dataset.
+
+Consequently, the copyright status of the underlying NEU-DET images and
+annotations is UNDETERMINED. No licence is granted for them by this file.
+
+>>> Before any commercial use or redistribution of the image data, you must
+>>> determine the applicable terms from the original authors.
+
+--------------------------------------------------------------------------------
+If you are the rights holder of NEU-DET and would like this release changed or
+removed, please open an issue and it will be actioned promptly.
+--------------------------------------------------------------------------------

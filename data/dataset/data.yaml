@@ -1,0 +1,14 @@
+# 由 prepare_dataset.py 自动生成，请勿手工修改
+path: D:/新建文件夹/新建文件夹/新建文件夹/steel-defect-supervision-demo/data/dataset
+train: images/train
+val: images/val
+test: images/test
+
+nc: 6
+names:
+  0: crazing
+  1: inclusion
+  2: patches
+  3: pitted_surface
+  4: rolled-in_scale
+  5: scratches

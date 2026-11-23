@@ -84,7 +84,7 @@ python demo_zone_analysis.py --image samples/crazing_101.jpg
 ### 6. 测试与评估
 
 ```bash
-python -m pytest                 # 53 个单元测试
+python -m pytest                 # 54 个单元测试
 python evaluate.py               # 测试集评估，产出 outputs/reports/evaluation_report.json
 ```
 
@@ -140,8 +140,9 @@ steel-defect-supervision-demo/
 ├── docs/
 │   ├── system_flow.md         # 系统流程与模块职责
 │   ├── experiment.md          # 实验记录与真实指标
-│   └── contribution.md        # 个人贡献说明
-└── tests/                     # 单元测试（53 个）
+│   ├── contribution.md        # 个人贡献说明
+│   └── todo.md                # 待办清单与次日接续说明
+└── tests/                     # 单元测试（54 个）
 ```
 
 ---

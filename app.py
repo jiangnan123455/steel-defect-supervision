@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 from pathlib import Path
 
@@ -37,7 +38,10 @@ from src.utils import (
 from src.zone_analysis import ZONE_NAMES, analyze_zones, build_grid_polygons
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-WEIGHTS_PATH = PROJECT_ROOT / "weights" / "best.pt"
+# 允许通过环境变量覆盖权重路径，便于测试与临时切换模型
+WEIGHTS_PATH = Path(
+    os.environ.get("STEEL_WEIGHTS_PATH", PROJECT_ROOT / "weights" / "best.pt")
+)
 
 st.set_page_config(
     page_title="钢材表面缺陷检测与区域质量分析系统",

@@ -33,15 +33,28 @@ def test_page_shows_title_and_project_caption(app_test):
 
 def test_page_reports_model_missing_without_crashing(app_test, monkeypatch):
     """T04：模型权重缺失时给出提示，程序不崩溃。"""
-    import app as app_module
-
-    monkeypatch.setattr(app_module, "WEIGHTS_PATH", app_module.PROJECT_ROOT / "weights" / "nonexistent.pt")
+    monkeypatch.setenv(
+        "STEEL_WEIGHTS_PATH", str(PROJECT_ROOT / "weights" / "nonexistent.pt")
+    )
 
     app_test.run()
 
     assert len(app_test.exception) == 0
     errors = [item.value for item in app_test.error]
     assert any("模型" in message for message in errors)
+
+
+def test_page_reports_model_ready_when_weights_exist(app_test, monkeypatch):
+    """权重就位时，侧栏显示模型已就绪。"""
+    monkeypatch.setenv(
+        "STEEL_WEIGHTS_PATH", str(PROJECT_ROOT / "weights" / "best.pt")
+    )
+
+    app_test.run()
+
+    assert len(app_test.exception) == 0
+    successes = [item.value for item in app_test.success]
+    assert any("就绪" in message for message in successes)
 
 
 def test_page_shows_confidence_slider(app_test):

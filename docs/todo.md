@@ -47,58 +47,38 @@
 
 ### 优先级 P0
 
-1. **等训练跑完，确认最终指标**
-   ```powershell
-   cd D:\新建文件夹\新建文件夹\新建文件夹\steel-defect-supervision-demo
-   .\.venv\Scripts\activate
-   # 训练若已中断，用 --resume 续训：
-   # python -c "from ultralytics import YOLO; YOLO('runs/train/steel_defect_yolov8n/weights/last.pt').train(resume=True)"
-   ```
-   训练脚本结束时会自动把 `best.pt` 复制到 `weights/`。若手动中断，需手动复制：
-   ```powershell
-   Copy-Item runs\steel_defect_yolov8n\weights\best.pt weights\best.pt
-   ```
-
-2. **在最终权重上重跑评估，更新文档**
+1. **等训练跑完，确认最终指标** —— ✅ 已恢复训练（`train.py --resume`），
+   断点续训到 40 轮。**完成后**：
    ```powershell
    python evaluate.py --weights weights/best.pt --conf 0.25 --imgsz 416
    ```
-   然后把 `docs/experiment.md` 里 EXP-01 / EXP-02 两行的数值、
-   区域分布表、推理性能表更新为最终值，并删掉"中期评估"字样。
+   然后把 `docs/experiment.md` 与 `docs/defense_script.md` 里的
+   `[最终值待更新]` 数字替换为最终值。
 
-3. **功能测试复验**（方案书第 11 章）
-   重点人工确认 T01、T05、T09、T10：
-   - 上传 JPG → 页面显示原图
-   - 点击"开始检测" → 返回结果
-   - 下载标注图 → 能正常打开
-   - 拖动置信度阈值 → 检出数量随阈值变化
+2. **功能测试复验** —— ✅ 已完成，10 项全部通过（见 experiment.md 第 5 节）。
 
-4. **现场演示彩排**（按方案书第 13 章流程）
+3. **现场演示彩排** —— 待做。按方案书第 13 章流程：
    ```powershell
    python check_environment.py
    streamlit run app.py
    ```
-   准备 2–3 张本地测试图片 + 一份录屏作为现场异常时的备份。
+   话术稿已写好：`docs/defense_script.md`。
 
 ### 优先级 P1
 
-5. **人工核验区域分析指标**
-   方案书要求"区域计数绝对误差"和"热点区域判断准确率"必须用人工标注
-   作为真值，不能只用模型自身输出。做法：随机抽 20 张测试图，人工数每个
-   区域的缺陷数，与系统输出比对，填入 `docs/experiment.md`。
+4. **人工核验区域分析指标** —— ✅ 已完成。用 NEU-DET 测试集人工标注为
+   真值（`src/zone_eval.py`），实测：区域计数总绝对误差 503、单图平均
+   1.86、热点命中率 0.444。结果与解读已写入 `docs/experiment.md`。
 
-6. **答辩 PPT 与话术**
-   按方案书 13.1 的七分钟结构准备，重点讲"Supervision 在检测结果之上
-   增加空间分布分析"这一创新点，明确说明它不改变模型精度。
+5. **答辩 PPT 与话术** —— ✅ 话术稿已完成（`docs/defense_script.md`，
+   含七分钟结构和预答辩问答）。PPT 本体待做。
 
-7. **GitHub 仓库整理**
-   - `git add -A && git commit`
-   - 权重文件按 `.gitignore` 排除，README 里写清获取方式
-   - 补 `docs/` 下的演示截图或 GIF
+6. **GitHub 仓库整理** —— 代码已提交 3 次。剩余：演示截图/GIF、
+   远程仓库推送。
 
 ### 优先级 P2
 
-8. 批量检测、CSV 导出、检测历史记录（方案书 P2，可不做）
+7. 批量检测、CSV 导出、检测历史记录（方案书 P2，可不做）
 
 ## 三、需要留意的坑
 

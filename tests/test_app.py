@@ -102,3 +102,41 @@ def test_zone_counts_sum_equals_detection_count_for_real_detection():
     analysis = analyze_zones(detections, width=300, height=300)
 
     assert sum(analysis.counts.values()) == analysis.assigned_count == 3
+
+
+def test_full_detection_flow_renders_without_exception(app_test, monkeypatch):
+    """端到端：点击「开始检测」后完整流程（检测→标注→统计→区域分析）不报错。
+
+    这条测试用于捕获 render_* 系列函数内部的 NameError / 参数遗漏，
+    单元测试只覆盖纯逻辑，覆盖不到 UI 执行路径。
+    """
+    monkeypatch.setenv("STEEL_WEIGHTS_PATH", str(PROJECT_ROOT / "weights" / "best.pt"))
+    app_test.run()
+
+    buttons = [button for button in app_test.button if button.label == "开始检测"]
+    assert buttons, "页面应存在「开始检测」按钮"
+
+    buttons[0].click().run()
+
+    if app_test.exception:
+        raise AssertionError(
+            "点击检测后出现异常：" + " | ".join(str(item.value) for item in app_test.exception)
+        )
+    assert len(app_test.exception) == 0
+
+
+def test_full_detection_flow_shows_zone_analysis_section(app_test, monkeypatch):
+    """端到端：完整流程后应渲染出区域分析相关内容。"""
+    monkeypatch.setenv("STEEL_WEIGHTS_PATH", str(PROJECT_ROOT / "weights" / "best.pt"))
+    app_test.run()
+
+    buttons = [button for button in app_test.button if button.label == "开始检测"]
+    buttons[0].click().run()
+
+    if app_test.exception:
+        raise AssertionError(
+            "点击检测后出现异常：" + " | ".join(str(item.value) for item in app_test.exception)
+        )
+
+    subheaders = [item.value for item in app_test.subheader]
+    assert any("区域" in (text or "") for text in subheaders), subheaders

@@ -184,7 +184,12 @@ def render_statistics(detections: sv.Detections, class_names: list[str]):
     return summary
 
 
-def render_zone_analysis(detections: sv.Detections, width: int, height: int):
+def render_zone_analysis(
+    detections: sv.Detections,
+    width: int,
+    height: int,
+    class_names: list[str],
+):
     """渲染 3×3 区域分析区。"""
     st.subheader("3×3 区域缺陷分布分析")
 
@@ -339,7 +344,7 @@ def main() -> None:
 
     render_images(image, annotated, grid_image, show_grid)
     render_statistics(detections, DEFAULT_CLASS_NAMES)
-    render_zone_analysis(detections, width, height)
+    render_zone_analysis(detections, width, height, DEFAULT_CLASS_NAMES)
     render_downloads(annotated, detections, DEFAULT_CLASS_NAMES)
 
 

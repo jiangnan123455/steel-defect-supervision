@@ -257,6 +257,8 @@ p, li, .stMarkdown {{ font-size: 14px; line-height: 1.62; }}
   color: var(--text-2);
   text-align: center;
 }}
+/* 批量模式下失败的那一张，说明文字用告警色，不只靠颜色也有「失败」二字 */
+.sv-samples figcaption.is-fail {{ color: var(--danger); }}
 
 /* 画布右上角的待检测状态，与分段控件同一位置 */
 p.sv-await {{

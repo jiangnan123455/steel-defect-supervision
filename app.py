@@ -26,6 +26,13 @@ import streamlit as st
 import supervision as sv
 
 from src.annotation import annotate_image
+from src.batch import (
+    MAX_BATCH_FILES,
+    batch_csv,
+    batch_frame,
+    item_captions,
+    run_batch,
+)
 from src.chinese_label import find_chinese_font
 from src.detection import (
     DEFAULT_CLASS_NAMES,
@@ -67,6 +74,7 @@ WEIGHTS_PATH = Path(
 )
 
 VIEWS = ("标注结果", "原图", "九宫格")
+MODES = ("单张检测", "批量检测")
 
 CLASS_SAMPLES = [
     ("crazing_101.jpg", "龟裂"),
@@ -167,35 +175,70 @@ def render_topbar() -> None:
 # ---------------------------------------------------------------- 控制轨
 
 
-def render_rail():
-    """控制轨：选图 → 定阈值 → 执行，三步从上到下。
+def render_rail() -> dict:
+    """控制轨：模式 → 选图 → 定阈值 → 执行。
 
     Returns:
-        `(uploaded, sample_name, conf_threshold, start_clicked)`
+        页面状态字典：`mode` / `uploaded` / `sample_name` / `use_samples` /
+        `conf_threshold` / `start_clicked`。
     """
     with st.container(key="rail"):
-        step_label(1, "选择图片")
-        uploaded = st.file_uploader(
-            "上传钢材表面图片",
-            type=["jpg", "jpeg", "png"],
+        # ?mode=batch 可直接进入批量模式，便于演示与截图
+        default_mode = MODES[1] if st.query_params.get("mode") == "batch" else MODES[0]
+        mode = st.segmented_control(
+            "检测模式",
+            list(MODES),
+            default=default_mode,
             label_visibility="collapsed",
-            help=f"支持格式：{'、'.join(sorted(SUPPORTED_EXTENSIONS))}，单张不超过 20 MB。",
+            key="mode_switch",
+            help="单张：一次一张，可切换标注/原图/九宫格三视图；批量：一次多张，出汇总表与 CSV。",
+        ) or default_mode
+        st.caption(
+            "单张模式看一张图的细节与区域分布；批量模式逐张跑完一批，出汇总与明细。"
         )
 
-        with st.expander(f"示例图片（{len(CLASS_SAMPLES)} 张）", expanded=False):
-            # 默认载入第一张样例：页面一打开就有一张真实的钢材表面图，
-            # 只需点一次「开始检测」；取消选择可回到六类样例库。
-            # ?sample=压痕斑块 可直接指向某张样例，便于演示与截图
-            default_sample = st.query_params.get("sample")
-            if default_sample not in SAMPLE_BY_NAME:
-                default_sample = CLASS_SAMPLES[0][1]
-            sample_name = st.pills(
-                "示例图片",
-                [name for _, name in CLASS_SAMPLES],
-                default=default_sample,
+        divider()
+        step_label(1, "选择图片")
+
+        sample_name = None
+        use_samples = False
+        if mode == MODES[1]:
+            uploaded = st.file_uploader(
+                "上传钢材表面图片（可多选）",
+                type=["jpg", "jpeg", "png"],
+                accept_multiple_files=True,
                 label_visibility="collapsed",
-                key="sample_pick",
+                help=(
+                    f"支持 {'、'.join(sorted(SUPPORTED_EXTENSIONS))}；"
+                    f"单批最多 {MAX_BATCH_FILES} 张，单张不超过 20 MB。"
+                ),
             )
+            use_samples = st.toggle(
+                "用六类样例组成一批（无需上传）",
+                value=st.query_params.get("batch") == "samples",
+                help="没有现成图片时，用 samples/ 下的六张样例演示整批流程。",
+            )
+        else:
+            uploaded = st.file_uploader(
+                "上传钢材表面图片",
+                type=["jpg", "jpeg", "png"],
+                label_visibility="collapsed",
+                help=f"支持格式：{'、'.join(sorted(SUPPORTED_EXTENSIONS))}，单张不超过 20 MB。",
+            )
+            with st.expander(f"示例图片（{len(CLASS_SAMPLES)} 张）", expanded=False):
+                # 默认载入第一张样例：页面一打开就有一张真实的钢材表面图，
+                # 只需点一次「开始检测」；取消选择可回到六类样例库。
+                # ?sample=压痕斑块 可直接指向某张样例，便于演示与截图
+                default_sample = st.query_params.get("sample")
+                if default_sample not in SAMPLE_BY_NAME:
+                    default_sample = CLASS_SAMPLES[0][1]
+                sample_name = st.pills(
+                    "示例图片",
+                    [name for _, name in CLASS_SAMPLES],
+                    default=default_sample,
+                    label_visibility="collapsed",
+                    key="sample_pick",
+                )
 
         divider()
         step_label(2, "判定条件")
@@ -205,12 +248,16 @@ def render_rail():
             max_value=0.95,
             value=0.25,
             step=0.05,
-            help="阈值越低检出越多缺陷，也更容易出现误检；阈值越高越保守。",
+            help="阈值越低检出越多缺陷，也更容易出现误检；阈值越高越保守。两种模式共用同一个阈值。",
         )
 
         divider()
         step_label(3, "执行检测")
-        start_clicked = st.button("开始检测", type="primary", width="stretch")
+        start_clicked = st.button(
+            "开始批量检测" if mode == MODES[1] else "开始检测",
+            type="primary",
+            width="stretch",
+        )
 
         if WEIGHTS_PATH.exists():
             size_mb = WEIGHTS_PATH.stat().st_size / 1024 / 1024
@@ -219,7 +266,14 @@ def render_rail():
             st.error("模型缺失", icon=":material/error:")
             st.caption("请先运行 `python train.py` 训练模型，或把 best.pt 放入 weights/ 目录。")
 
-    return uploaded, sample_name, conf_threshold, start_clicked
+    return {
+        "mode": mode,
+        "uploaded": uploaded,
+        "sample_name": sample_name,
+        "use_samples": use_samples,
+        "conf_threshold": conf_threshold,
+        "start_clicked": start_clicked,
+    }
 
 
 # ---------------------------------------------------------------- 画布
@@ -428,6 +482,142 @@ def render_detail_band(run: dict) -> None:
     )
 
 
+# ---------------------------------------------------------------- 批量模式
+
+
+def _batch_grid(entries: list[tuple[str, str, bool]]) -> str:
+    """批量缩略图网格：`(data_uri, 说明, 是否失败)` 列表。"""
+    cells = ""
+    for uri, caption, failed in entries:
+        css = ' class="is-fail"' if failed else ""
+        cells += (
+            f'<figure><img src="{uri}" alt="{caption}">'
+            f"<figcaption{css}>{caption}</figcaption></figure>"
+        )
+    return f'<div class="sv-samples">{cells}</div>'
+
+
+def _batch_sources(state: dict) -> list[tuple[str, bytes]]:
+    """本批要处理的图片：上传的文件优先，其次是用样例凑一批。"""
+    uploaded = state.get("uploaded")
+    if uploaded:
+        return [(item.name, item.getvalue()) for item in uploaded][:MAX_BATCH_FILES]
+    if state.get("use_samples"):
+        pairs: list[tuple[str, bytes]] = []
+        for filename, _ in CLASS_SAMPLES:
+            path = PROJECT_ROOT / "samples" / filename
+            if path.exists():
+                pairs.append((path.name, path.read_bytes()))
+        return pairs
+    return []
+
+
+def render_batch_canvas(
+    files: list[tuple[str, bytes]],
+    result,
+    conf_threshold: float,
+) -> None:
+    """批量画布：未检测时看原图缩略图，检测后看标注缩略图与每张的缺陷数。"""
+    with st.container(key="canvas"):
+        if result is None:
+            canvas_meta(f"已选 {len(files)} 张", f"阈值 {conf_threshold:.2f}")
+            entries = [(_data_uri(raw), name, False) for name, raw in files[:6]]
+            st.markdown(_batch_grid(entries), unsafe_allow_html=True)
+            if len(files) > 6:
+                st.caption(f"共 {len(files)} 张，这里只预览前 6 张；全部结果见下方明细。")
+            st.caption("点右侧「开始批量检测」，系统逐张推理后在这里看到标注结果。")
+            return
+
+        canvas_meta(f"批量 · {len(result.items)} 张", f"阈值 {conf_threshold:.2f}", f"用时 {result.elapsed_text}")
+        entries = [
+            (f'data:image/png;base64,{base64.b64encode(encode_png_bytes(item.annotated)).decode()}',
+             f"{item.name} · {item.count} 个",
+             False)
+            for item in result.items[:6]
+            if item.ok and item.annotated is not None
+        ]
+        st.markdown(_batch_grid(entries), unsafe_allow_html=True)
+        if len(result.items) > 6:
+            st.caption(f"共 {len(result.items)} 张，这里只预览前 6 张。")
+        if result.failed:
+            st.caption(f"另有 {result.failed} 张失败，失败原因列在下方「异常与口径」。")
+
+
+def render_batch_bands(result) -> None:
+    """批量结果带：任务概览 → 整批类别构成 | 异常与口径 → 明细与 CSV。"""
+    section(
+        "批次概览",
+        f"{len(result.items)} 张 · 阈值 {result.conf_threshold:.2f} · 用时 {result.elapsed_text}",
+    )
+    stat_ribbon(
+        [
+            ("已选图片", str(len(result.items)), "本批提交的张数"),
+            ("已完成", str(result.completed), "含未检出"),
+            ("累计缺陷", str(result.total_defects), "全批检出合计"),
+            ("失败", str(result.failed), "读取或推理失败"),
+        ]
+    )
+
+    class_column, note_column = st.columns([1, 1.05], gap="large")
+
+    with class_column:
+        st.subheader("整批类别构成")
+        counts = result.class_counts
+        if counts:
+            st.markdown(
+                class_rows(counts, result.total_defects), unsafe_allow_html=True
+            )
+        else:
+            st.info(
+                "本批没有检出超过阈值的缺陷。未检出不等于合格，仍需人工复核。",
+                icon=":material/info:",
+            )
+
+    with note_column:
+        st.subheader("异常与口径")
+        failed = [item for item in result.items if not item.ok]
+        # 失败清单与口径说明合并为一段，避免两条小字挤在一起
+        lines = [f"· {item.name}：{item.error}" for item in failed[:5]]
+        if len(failed) > 5:
+            lines.append(f"· 另有 {len(failed) - 5} 张失败，见下方明细。")
+        lines.append(
+            f"逐张推理而非并行；单批最多 {MAX_BATCH_FILES} 张、单张不超过 20 MB；"
+            "任一图片失败只记录原因，不影响其余图片。"
+        )
+        st.caption("\n".join(lines))
+
+    title_column, csv_column = st.columns([3, 1], vertical_alignment="center")
+    with title_column:
+        st.markdown('<p class="sv-band-title">批量明细</p>', unsafe_allow_html=True)
+    with csv_column:
+        st.download_button(
+            "导出 CSV",
+            data=batch_csv(result),
+            file_name=f"batch_{len(result.items)}张_{result.conf_threshold:.2f}.csv",
+            mime="text/csv",
+            width="stretch",
+        )
+
+    frame = batch_frame(result)
+    st.dataframe(
+        frame,
+        width="stretch",
+        hide_index=True,
+        height=min(420, max(140, 38 * len(frame) + 40)),
+        column_config={
+            "图片名称": st.column_config.TextColumn("图片名称", width=200),
+            "缺陷类型": st.column_config.TextColumn("缺陷类型", width=120),
+            "置信度": st.column_config.NumberColumn("置信度", format="%.3f", width=90),
+            "检测状态": st.column_config.TextColumn("检测状态", width=260),
+        },
+    )
+    rule_note(
+        "批量模式采用逐张推理，不代表多张图片并行处理；"
+        "某张图片失败只记录原因并继续处理其余图片。"
+        "「未检出」只表示当前阈值下没有检出目标，不代表产品合格。"
+    )
+
+
 # ---------------------------------------------------------------- 页脚
 
 
@@ -479,19 +669,18 @@ def execute_detection(image: np.ndarray, conf_threshold: float) -> dict:
     }
 
 
-def main() -> None:
-    render_topbar()
-
-    canvas_column, rail_column = st.columns([1.72, 1], gap="large")
-    with rail_column:
-        uploaded, sample_name, conf_threshold, start_clicked = render_rail()
+def run_single_mode(canvas_column, state: dict) -> None:
+    """单张模式：选一张图，出标注、九宫格与明细。"""
+    uploaded = state["uploaded"]
+    conf_threshold = state["conf_threshold"]
+    start_clicked = state["start_clicked"]
 
     # 图片优先级：上传的文件 > 样例库
     payload: tuple[bytes, str] | None = None
     if uploaded is not None:
         payload = (uploaded.getvalue(), uploaded.name)
-    elif sample_name:
-        sample_path = PROJECT_ROOT / "samples" / SAMPLE_BY_NAME[sample_name]
+    elif state["sample_name"]:
+        sample_path = PROJECT_ROOT / "samples" / SAMPLE_BY_NAME[state["sample_name"]]
         if sample_path.exists():
             payload = (sample_path.read_bytes(), sample_path.name)
 
@@ -546,6 +735,89 @@ def main() -> None:
             "边界上的目标按从上到下、从左到右的顺序唯一归属，"
             "因此九个区域计数之和恒等于参与统计的检测目标数。"
         )
+
+
+def run_batch_mode(canvas_column, state: dict) -> None:
+    """批量模式：逐张推理、出汇总与 CSV；单张失败不影响整批。"""
+    conf_threshold = state["conf_threshold"]
+    files = _batch_sources(state)
+
+    if not files:
+        with canvas_column:
+            with st.container(key="canvas"):
+                canvas_meta("批量检测", "未选择图片")
+                entries = [
+                    (_data_uri((PROJECT_ROOT / "samples" / name).read_bytes()), name, False)
+                    for name, _ in CLASS_SAMPLES
+                    if (PROJECT_ROOT / "samples" / name).exists()
+                ]
+                if entries:
+                    st.markdown(_batch_grid(entries), unsafe_allow_html=True)
+                st.caption(
+                    "上传多张图片，或打开右侧「用六类样例组成一批」，"
+                    "系统会逐张推理并给出汇总与明细。"
+                )
+        return
+
+    # 批次结果按「文件名序列 + 阈值」缓存，切换模式或改窗口不会重跑
+    batch_key = "|".join(name for name, _ in files) + f"|{conf_threshold:.2f}"
+    cached = st.session_state.get("batch")
+    result = cached["result"] if cached and cached.get("key") == batch_key else None
+
+    autorun = st.query_params.get("autorun") in ("1", "true", "yes")
+    error: str | None = None
+
+    with canvas_column:
+        if result is None and (state["start_clicked"] or autorun):
+            if not WEIGHTS_PATH.exists():
+                error = "未找到模型权重文件 weights/best.pt，请先运行 `python train.py` 完成训练。"
+            else:
+                try:
+                    model = get_model(str(WEIGHTS_PATH))
+                    bar = st.progress(0.0, text=f"准备检测 {len(files)} 张…")
+
+                    def _report(done: int, total: int, name: str) -> None:
+                        if total <= 0:
+                            return
+                        shown = min(done + 1, total)
+                        bar.progress(
+                            min(done / total, 1.0),
+                            text=f"正在检测 {shown}/{total}：{name}",
+                        )
+
+                    result = run_batch(
+                        model,
+                        files,
+                        conf_threshold,
+                        DEFAULT_CLASS_NAMES,
+                        progress=_report,
+                    )
+                    bar.progress(1.0, text="检测完成")
+                    bar.empty()
+                    st.session_state["batch"] = {"key": batch_key, "result": result}
+                except (ModelNotFoundError, DetectionError, ValueError) as exc:
+                    error = str(exc)
+
+        render_batch_canvas(files, result, conf_threshold)
+
+    if error:
+        st.error(error, icon=":material/error:")
+
+    if result is not None:
+        render_batch_bands(result)
+
+
+def main() -> None:
+    render_topbar()
+
+    canvas_column, rail_column = st.columns([1.72, 1], gap="large")
+    with rail_column:
+        state = render_rail()
+
+    if state["mode"] == MODES[1]:
+        run_batch_mode(canvas_column, state)
+    else:
+        run_single_mode(canvas_column, state)
 
     render_footer()
 

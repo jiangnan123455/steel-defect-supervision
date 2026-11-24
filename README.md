@@ -80,7 +80,9 @@ python check_environment.py
 streamlit run app.py
 ```
 
-浏览器会打开 <http://localhost:8501>。
+浏览器会打开 <http://localhost:8501>。页面默认进入**单张检测**，
+在控制轨顶部的「单张检测 / 批量检测」之间切换；批量模式可勾选
+「用六类样例组成一批」免上传演示。两种模式的说明见 [`docs/batch_mode.md`](docs/batch_mode.md)。
 
 ### 5. 命令行检测（可选）
 
@@ -107,13 +109,15 @@ python evaluate.py               # 测试集评估，产出 outputs/reports/eval
 
 | 功能 | 说明 | 状态 |
 |---|---|---|
-| 图片上传 | JPG / JPEG / PNG，带格式与体积校验 | 已实现 |
+| 检测模式 | 单张检测 / 批量检测，控制轨顶部切换，阈值共用 | 已实现 |
+| 图片上传 | JPG / JPEG / PNG，带格式与体积校验（单张 ≤ 20 MB） | 已实现 |
 | 检测参数 | 置信度阈值滑块，0.05–0.95 | 已实现 |
 | 缺陷检测 | YOLO 推理，CPU 可运行 | 已实现 |
 | Supervision 标注 | `BoxAnnotator` 画框 + `LabelAnnotator` 标注类别与置信度 | 已实现 |
 | 缺陷统计 | 指标条、九宫格分布、置信度分级、缺陷明细表 | 已实现 |
 | **3×3 区域分析** | `PolygonZone` 九宫格统计 + 缺陷集中区域 + 类别构成 | 已实现 |
-| 结果下载 | 标注图 PNG + 明细 CSV | 已实现 |
+| 批量检测 | 一次最多 20 张、逐张推理、进度条、整批汇总与明细、CSV 导出 | 已实现 |
+| 结果下载 | 单张：标注图 PNG + 明细 CSV；批量：批次 CSV | 已实现 |
 | 异常提示 | 格式错误、模型缺失、推理失败均有明确提示，不崩溃 | 已实现 |
 | 中文字体 | 缺陷类别名用 PIL TrueType 渲染，不显示为 "??" | 已实现 |
 
@@ -146,6 +150,7 @@ steel-defect-supervision-demo/
 │   ├── chinese_label.py       # 中文字体标签渲染（兼容 cv2.putText 不支持中文）
 │   ├── ui_theme.py            # 设计系统：token、全局样式、可复用组件
 │   ├── ui_charts.py           # Plotly 图表统一样式
+│   ├── batch.py               # 批量检测：逐张推理、失败隔离、汇总与 CSV
 │   ├── zone_analysis.py       # 九宫格区域分析（核心创新点）
 │   └── utils.py               # 图片与统计工具
 ├── samples/                   # 6 张演示样例图片

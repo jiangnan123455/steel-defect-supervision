@@ -49,40 +49,56 @@ def parse_args() -> argparse.Namespace:
         default="steel_defect_yolov8n",
         help="本次训练的实验名称",
     )
+    parser.add_argument(
+        "--resume",
+        nargs="?",
+        const=str(DEFAULT_OUTPUT_DIR / "steel_defect_yolov8n" / "weights" / "last.pt"),
+        default=None,
+        help="从断点续训，可选传入 last.pt 路径；不带参数时使用默认断点",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
 
-    data_yaml = Path(args.data)
-    if not data_yaml.exists():
-        raise SystemExit(
-            f"未找到数据集配置：{data_yaml}\n"
-            "请先运行 python prepare_dataset.py 整理数据集。"
-        )
-
     from ultralytics import YOLO
 
-    model = YOLO(args.model)
-    model.train(
-        data=str(data_yaml),
-        epochs=args.epochs,
-        imgsz=args.imgsz,
-        batch=args.batch,
-        device=args.device,
-        workers=args.workers,
-        seed=args.seed,
-        project=args.output,
-        name=args.name,
-        exist_ok=True,
-        pretrained=True,
-        optimizer="auto",
-        plots=True,
-        verbose=True,
-    )
+    if args.resume:
+        # 断点续训：训练参数（含数据集、轮数、输出目录）从检查点恢复
+        last_path = Path(args.resume)
+        if not last_path.exists():
+            raise SystemExit(f"未找到断点权重：{last_path}")
+        model = YOLO(str(last_path))
+        model.train(resume=True)
+        best_weights = last_path.parent / "best.pt"
+    else:
+        data_yaml = Path(args.data)
+        if not data_yaml.exists():
+            raise SystemExit(
+                f"未找到数据集配置：{data_yaml}\n"
+                "请先运行 python prepare_dataset.py 整理数据集。"
+            )
 
-    best_weights = Path(args.output) / args.name / "weights" / "best.pt"
+        model = YOLO(args.model)
+        model.train(
+            data=str(data_yaml),
+            epochs=args.epochs,
+            imgsz=args.imgsz,
+            batch=args.batch,
+            device=args.device,
+            workers=args.workers,
+            seed=args.seed,
+            project=args.output,
+            name=args.name,
+            exist_ok=True,
+            pretrained=True,
+            optimizer="auto",
+            plots=True,
+            verbose=True,
+        )
+        best_weights = Path(args.output) / args.name / "weights" / "best.pt"
+
     if not best_weights.exists():
         raise SystemExit(f"训练结束但未找到权重文件：{best_weights}")
 

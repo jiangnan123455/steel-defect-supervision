@@ -29,6 +29,7 @@ REPORTS_DIR = PROJECT_ROOT / "outputs" / "reports"
 
 from src.detection import DEFAULT_CLASS_NAMES  # noqa: E402
 from src.zone_analysis import ZONE_NAMES, analyze_zones  # noqa: E402
+from src.zone_eval import compare_zone_distributions, yolo_label_to_detections  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -78,6 +79,10 @@ def main() -> None:
     image_dir = Path(args.data).parent / "images" / args.split
     label_dir = Path(args.data).parent / "labels" / args.split
 
+    # 人工真值：NEU-DET 测试集标签即人工标注
+    ground_truths: list = []
+    predictions: list = []
+
     from src.detection import detect_image
 
     for image_path in sorted(image_dir.glob("*.jpg")):
@@ -85,6 +90,7 @@ def main() -> None:
         if image is None:
             continue
         image_count += 1
+        height, width = image.shape[:2]
 
         start = time.perf_counter()
         detections = detect_image(
@@ -95,11 +101,32 @@ def main() -> None:
         )
         elapsed_total += time.perf_counter() - start
 
-        height, width = image.shape[:2]
         analysis = analyze_zones(detections, width=width, height=height)
         for name, count in analysis.counts.items():
             zone_totals[name] += count
         per_image_counts.append(analysis.total)
+
+        # 读取人工真值标签
+        label_path = label_dir / f"{image_path.stem}.txt"
+        labels = []
+        if label_path.exists():
+            for line in label_path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split()
+                labels.append((int(parts[0]), *(float(v) for v in parts[1:5])))
+        ground_truths.append(yolo_label_to_detections(labels, width=width, height=height))
+        predictions.append(detections)
+
+    # 人工核验的区域分析指标（方案书 8.3 节要求）
+    zone_comparison = compare_zone_distributions(
+        ground_truths=ground_truths,
+        predictions=predictions,
+        width=width,
+        height=height,
+        zone_names=ZONE_NAMES,
+    )
 
     hotspot = max(zone_totals.items(), key=lambda item: item[1])[0] if sum(zone_totals.values()) else None
 
@@ -121,6 +148,16 @@ def main() -> None:
             "mean_defects_per_image": (
                 float(np.mean(per_image_counts)) if per_image_counts else 0.0
             ),
+            "human_verification": {
+                "ground_truth_targets": zone_comparison.ground_truth_total,
+                "predicted_targets": zone_comparison.prediction_total,
+                "total_absolute_error": zone_comparison.total_error,
+                "mean_error_per_image": zone_comparison.mean_error_per_image,
+                "per_zone_errors": zone_comparison.zone_errors,
+                "hotspot_agreement": zone_comparison.hotspot_agreement,
+                "hotspot_total": zone_comparison.hotspot_total,
+                "hotspot_accuracy": zone_comparison.hotspot_accuracy,
+            },
         },
         "runtime": {
             "total_inference_seconds": round(elapsed_total, 3),
@@ -144,6 +181,12 @@ def main() -> None:
     print(f"  九宫格缺陷合计: {sum(zone_totals.values())}")
     print(f"  缺陷集中区域: {hotspot}")
     print(f"  单图平均缺陷数: {report['zone_analysis']['mean_defects_per_image']:.2f}")
+    print("人工核验（以 NEU-DET 测试集标注为真值）")
+    hv = report["zone_analysis"]["human_verification"]
+    print(f"  真值目标数: {hv['ground_truth_targets']}，模型检出: {hv['predicted_targets']}")
+    print(f"  区域计数总绝对误差: {hv['total_absolute_error']}")
+    print(f"  单图平均绝对误差: {hv['mean_error_per_image']:.3f}")
+    print(f"  热点区域命中率: {hv['hotspot_agreement']}/{hv['hotspot_total']} = {hv['hotspot_accuracy']:.3f}")
     print(f"  单图平均耗时: {report['runtime']['mean_ms_per_image']:.1f} ms")
     print(f"报告已保存：{report_path}")
     print("=" * 60)

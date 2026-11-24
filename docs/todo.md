@@ -85,7 +85,7 @@
 | 问题 | 说明 |
 |---|---|
 | 上游 NEU-DET 未声明许可 | 数据集不随仓库分发，README 已说明获取方式 |
-| 416 分辨率漏检细长缺陷 | `crazing_101.jpg` 在 conf=0.25 下未检出，其他 5 张均正常检出；有 GPU 建议用 640 重训 |
+| 416 分辨率下小缺陷漏检 | 最终模型 6 张样例全检出（含此前漏检的 crazing_101），但测试集整体 Recall 0.702，仍有约三成漏检；有 GPU 建议用 640 重训 |
 | Windows 中文路径 | `cv2.imwrite` 会静默失败，一律用 `cv2.imencode(...).tofile(...)` |
 | pip 网络 | 清华源没有 streamlit，用阿里云源 `https://mirrors.aliyun.com/pypi/simple/` |
 | GitHub / HF 下载 | 直连被挡，需用 `curl -x http://127.0.0.1:7897` |

@@ -13,6 +13,10 @@ from src.chinese_label import ChineseLabelAnnotator
 DEFAULT_BOX_THICKNESS = 2
 DEFAULT_LABEL_TEXT_SCALE = 0.5
 
+# 缺陷统一使用告警红：与站内「红色 = 缺陷/告警」语义保持一致，
+# 也避免 supervision 默认紫色调色板与品牌蓝产生视觉冲突。
+DEFECT_COLOR = sv.Color(r=217, g=45, b=32)  # #D92D20
+
 
 def build_labels(
     detections: sv.Detections,
@@ -78,10 +82,10 @@ def annotate_image(
 
     labels = build_labels(detections, class_names)
 
-    box_annotator = sv.BoxAnnotator(thickness=box_thickness)
+    box_annotator = sv.BoxAnnotator(thickness=box_thickness, color=DEFECT_COLOR)
     # 使用中文标注器，确保"龟裂""夹杂"等缺陷类别名能正确显示，
-    # 而不是 cv2.putText 渲染出的问号。
-    label_annotator = ChineseLabelAnnotator(text_scale=text_scale)
+    # 而不是 cv2.putText 渲染出的问号；标注器内部会把贴边标签拉回画面内。
+    label_annotator = ChineseLabelAnnotator(text_scale=text_scale, color=DEFECT_COLOR)
 
     scene = box_annotator.annotate(scene=scene, detections=detections)
     scene = label_annotator.annotate(scene=scene, detections=detections, labels=labels)

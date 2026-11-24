@@ -60,6 +60,45 @@ def find_chinese_font(size: int = 16) -> ImageFont.FreeTypeFont | None:
     return None
 
 
+def clamp_label_boxes(
+    boxes: np.ndarray,
+    width: int,
+    height: int,
+) -> np.ndarray:
+    """把标签矩形整体平移进画面内，保持尺寸不变。
+
+    框贴边时（例如缺陷框顶部压在图片上边缘），默认标签会画到画面外被裁掉。
+    这里对标签矩形的左上角做钳制，保证完整可见。
+
+    Args:
+        boxes: 形状 `(N, >=4)` 的标签矩形，列为 `x1, y1, x2, y2`（可带额外列）。
+        width: 画面宽度（像素）。
+        height: 画面高度（像素）。
+
+    Returns:
+        调整后的副本，形状与原数组一致。
+    """
+    if boxes.size == 0:
+        return boxes.copy()
+
+    clamped = boxes.copy()
+    for index in range(len(clamped)):
+        x1, y1, x2, y2 = clamped[index, :4]
+        box_width = x2 - x1
+        box_height = y2 - y1
+
+        # 先贴左上边界；若标签比画面还宽/高，贴住起点即可
+        new_x1 = max(0.0, min(float(x1), float(width) - box_width))
+        new_y1 = max(0.0, min(float(y1), float(height) - box_height))
+
+        clamped[index, 0] = new_x1
+        clamped[index, 1] = new_y1
+        clamped[index, 2] = new_x1 + box_width
+        clamped[index, 3] = new_y1 + box_height
+
+    return clamped
+
+
 class ChineseLabelAnnotator(sv.LabelAnnotator):
     """支持中文标签的 Supervision 标注器。
 
@@ -113,11 +152,17 @@ class ChineseLabelAnnotator(sv.LabelAnnotator):
         scene = scene.copy()
 
         label_properties = self._get_label_properties(detections, labels)
+        # 框贴边时把标签整体拉回画面内，避免文字被裁掉
+        label_properties = clamp_label_boxes(
+            label_properties, width=scene.shape[1], height=scene.shape[0]
+        )
         color_lookup = (
             custom_color_lookup if custom_color_lookup is not None else self.color_lookup
         )
 
         # 第一趟：在 numpy 场景上画标签背景框（沿用父类的圆角矩形实现）。
+        # 注意：numpy 数组是 BGR，父类 draw_rounded_rectangle 也接收 BGR，
+        # 因此这里保持 as_bgr() 不变。
         text_colors: list[tuple[int, int, int]] = []
         for index, label_property in enumerate(label_properties):
             background_color = _resolve_color(
@@ -126,7 +171,9 @@ class ChineseLabelAnnotator(sv.LabelAnnotator):
             text_color = _resolve_color(
                 self.text_color, detections, index, color_lookup
             )
-            text_colors.append(tuple(int(channel) for channel in text_color.as_rgb()))
+            # PIL 只是把颜色数值原样写进数组，不做色彩空间转换，
+            # 所以文字也用 BGR，避免与背景框出现通道不一致。
+            text_colors.append(tuple(int(channel) for channel in text_color.as_bgr()))
 
             box_xyxy = label_property[:4].astype(int)
             self.draw_rounded_rectangle(
@@ -149,7 +196,9 @@ class ChineseLabelAnnotator(sv.LabelAnnotator):
                 fill=text_colors[index],
             )
 
-        scene[:] = np.array(canvas)[:, :, ::-1]
+        # fromarray / array 之间没有真实色彩转换，直接写回即可；
+        # 再叠加一次 ::-1 会把 numpy 画好的背景框通道反转。
+        scene[:] = np.array(canvas)
         return scene
 
     def _default_labels(self, detections: sv.Detections) -> list[str]:

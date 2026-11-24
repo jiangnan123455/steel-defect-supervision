@@ -84,7 +84,7 @@ python demo_zone_analysis.py --image samples/crazing_101.jpg
 ### 6. 测试与评估
 
 ```bash
-python -m pytest                 # 54 个单元测试
+python -m pytest                 # 88 个单元测试
 python evaluate.py               # 测试集评估，产出 outputs/reports/evaluation_report.json
 ```
 
@@ -131,6 +131,8 @@ steel-defect-supervision-demo/
 │   ├── detection.py           # YOLO 推理封装
 │   ├── annotation.py          # Supervision 标注逻辑
 │   ├── chinese_label.py       # 中文字体标签渲染（兼容 cv2.putText 不支持中文）
+│   ├── ui_theme.py            # 设计系统：token、全局样式、可复用组件
+│   ├── ui_charts.py           # Plotly 图表统一样式
 │   ├── zone_analysis.py       # 九宫格区域分析（核心创新点）
 │   └── utils.py               # 图片与统计工具
 ├── samples/                   # 6 张演示样例图片
@@ -141,8 +143,10 @@ steel-defect-supervision-demo/
 │   ├── system_flow.md         # 系统流程与模块职责
 │   ├── experiment.md          # 实验记录与真实指标
 │   ├── contribution.md        # 个人贡献说明
+│   ├── defense_script.md      # 答辩七分钟陈述稿与问答准备
+│   ├── ui_design_system.md    # UI 设计系统与改造范围说明
 │   └── todo.md                # 待办清单与次日接续说明
-└── tests/                     # 单元测试（54 个）
+└── tests/                     # 单元测试（88 个）
 ```
 
 ---

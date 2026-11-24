@@ -12,6 +12,16 @@ YOLO 负责识别缺陷类别、置信度和边界框；**Supervision** 负责�
 
 ---
 
+## 界面
+
+![检测工作台](docs/images/ui-workbench.png)
+
+选图、调阈值、一键检测；结果按「指标 → 区域 → 明细」三段展开：
+
+![检测结果](docs/images/ui-result.png)
+
+---
+
 ## 快速开始
 
 ### 1. 环境准备
@@ -40,6 +50,9 @@ git clone https://huggingface.co/datasets/KeenForgeAI/NEU-DET-corrected data/neu
 python prepare_dataset.py       # 生成 70/15/15 分层划分与 data.yaml
 python prepare_samples.py       # 导出 6 张演示样例到 samples/
 ```
+
+> `samples/` 下的 6 张图片取自 NEU-DET，仅用于演示界面与命令行示例，
+> 版权归数据集原作者；若不需要，删除该目录即可，页面会自动回到空状态。
 
 ### 3. 训练模型
 
@@ -98,8 +111,8 @@ python evaluate.py               # 测试集评估，产出 outputs/reports/eval
 | 检测参数 | 置信度阈值滑块，0.05–0.95 | 已实现 |
 | 缺陷检测 | YOLO 推理，CPU 可运行 | 已实现 |
 | Supervision 标注 | `BoxAnnotator` 画框 + `LabelAnnotator` 标注类别与置信度 | 已实现 |
-| 缺陷统计 | 总数、类别分布、平均置信度、明细表 | 已实现 |
-| **3×3 区域分析** | `PolygonZone` 九宫格统计 + 缺陷集中区域 + 热力柱状图 | 已实现 |
+| 缺陷统计 | 指标条、九宫格分布、置信度分级、缺陷明细表 | 已实现 |
+| **3×3 区域分析** | `PolygonZone` 九宫格统计 + 缺陷集中区域 + 类别构成 | 已实现 |
 | 结果下载 | 标注图 PNG + 明细 CSV | 已实现 |
 | 异常提示 | 格式错误、模型缺失、推理失败均有明确提示，不崩溃 | 已实现 |
 | 中文字体 | 缺陷类别名用 PIL TrueType 渲染，不显示为 "??" | 已实现 |

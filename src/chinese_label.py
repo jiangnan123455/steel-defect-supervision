@@ -152,6 +152,9 @@ class ChineseLabelAnnotator(sv.LabelAnnotator):
         scene = scene.copy()
 
         label_properties = self._get_label_properties(detections, labels)
+        # 父类按 cv2 字体的宽度估算背景框，中文用 PIL 渲染会更宽，
+        # 这里按实际字形重新贴合，否则文字会超出底色被画面裁掉
+        label_properties = self._fit_label_boxes(label_properties, labels, font)
         # 框贴边时把标签整体拉回画面内，避免文字被裁掉
         label_properties = clamp_label_boxes(
             label_properties, width=scene.shape[1], height=scene.shape[0]
@@ -200,6 +203,26 @@ class ChineseLabelAnnotator(sv.LabelAnnotator):
         # 再叠加一次 ::-1 会把 numpy 画好的背景框通道反转。
         scene[:] = np.array(canvas)
         return scene
+
+    def _fit_label_boxes(self, boxes, labels: list[str], font) -> np.ndarray:
+        """按 PIL 实测的字形尺寸重设背景框，让底色正好包住文字。
+
+        Args:
+            boxes: 形状 ``(N, >=4)`` 的标签矩形，列为 ``x1, y1, x2, y2``。
+            labels: 与矩形一一对应的标签文本。
+            font: 已加载的中文字体。
+
+        Returns:
+            调整宽高后的副本，形状与原数组一致。
+        """
+        fitted = boxes.copy()
+        for index, label in enumerate(labels):
+            if index >= len(fitted):
+                break
+            left, top, right, bottom = font.getbbox(label)
+            fitted[index, 2] = fitted[index, 0] + (right - left) + 2 * self.text_padding
+            fitted[index, 3] = fitted[index, 1] + (bottom - top) + 2 * self.text_padding
+        return fitted
 
     def _default_labels(self, detections: sv.Detections) -> list[str]:
         from supervision.detection.core import CLASS_NAME_DATA_FIELD

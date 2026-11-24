@@ -32,3 +32,7 @@ outputs/reports/*
 Thumbs.db
 .idea/
 .vscode/
+
+# 本地草稿与设计工具产物（不随仓库分发）
+.taste-skill/
+site/

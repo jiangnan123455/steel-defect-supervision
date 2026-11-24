@@ -133,7 +133,7 @@ def test_build_zone_tiles_html_handles_zero_defects_gracefully():
 
 
 def test_build_zone_tiles_html_includes_legend():
-    """图例说明冷热含义，不只靠颜色传达信息（UX-003）。"""
+    """图例说明冷热与红框含义，不只靠颜色传达信息（UX-003）。"""
     html = build_zone_tiles_html(_analysis_with_counts())
 
-    assert "少" in html and "多" in html
+    assert "底色越深" in html and "红色描边" in html

@@ -1,10 +1,14 @@
 [theme]
 base = "light"
 primaryColor = "#185FA5"
-backgroundColor = "#F6F8FB"
+backgroundColor = "#F4F6FA"
 secondaryBackgroundColor = "#FFFFFF"
-textColor = "#14202E"
+textColor = "#131E2B"
 font = "sans serif"
 
 [browser]
 gatherUsageStats = false
+
+[server]
+# 与 src/utils.py 的单张 20 MB 校验保持一致，避免上传框文案自相矛盾
+maxUploadSize = 20

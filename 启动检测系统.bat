@@ -2,6 +2,15 @@
 title Steel Defect Detection System
 cd /d "%~dp0"
 
+rem If the service is already listening on 8501, just open the browser
+netstat -ano | findstr ":8501" | findstr "LISTENING" >nul 2>&1
+if not errorlevel 1 (
+    echo.
+    echo  System is already running. Opening browser...
+    start "" http://localhost:8501
+    exit /b 0
+)
+
 if not exist ".venv\Scripts\streamlit.exe" (
     echo.
     echo [ERROR] Python environment not found: .venv\Scripts\streamlit.exe
